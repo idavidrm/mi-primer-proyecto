@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generador de briefings de contenido</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f2;
+      --surface: #ffffff;
+      --border: #e2e0d8;
+      --text: #1a1a18;
+      --text-muted: #6b6a64;
+      --text-faint: #a09e97;
+      --accent: #1a1a18;
+      --accent-fg: #ffffff;
+      --danger-bg: #fff1f0;
+      --danger: #c0392b;
+      --success-bg: #f0faf4;
+      --tag-bg: #eeecea;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.25rem 5rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: normal;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-label {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 1.25rem;
+    }
+
+    .field { margin-bottom: 1.25rem; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      outline: none;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--text);
+      background: #fff;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: var(--text-faint);
+    }
+
+    textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6a64' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.85rem center;
+      padding-right: 2.5rem;
+      cursor: pointer;
+    }
+
+    .api-note {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.8rem;
+      color: var(--text-faint);
+      margin-top: 0.4rem;
+      line-height: 1.5;
+    }
+
+    .api-note a {
+      color: var(--text-muted);
+      text-decoration: underline;
+    }
+
+    button {
+      width: 100%;
+      padding: 0.85rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    button:hover { opacity: 0.82; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result { display: none; }
+
+    .result-header {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 1rem;
+    }
+
+    .block { margin-bottom: 1.25rem; }
+    .block:last-child { margin-bottom: 0; }
+
+    .block-label {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 0.4rem;
+    }
+
+    .block-content {
+      font-size: 0.97rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+
+    .error-box {
+      background: var(--danger-bg);
+      border: 1px solid #fac5c1;
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.25rem;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.875rem;
+      color: var(--danger);
+      line-height: 1.55;
+    }
+
+    @media (max-width: 500px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Generador de briefings</h1>
+    <p>Rellena el formulario y obtén un briefing de contenido listo para usar.</p>
+  </header>
+
+  <div class="card">
+    <div class="section-label">Configuración</div>
+
+    <div class="field">
+      <label for="apikey">API Key de Anthropic</label>
+      <input type="password" id="apikey" placeholder="sk-ant-..." />
+      <p class="api-note">
+        Consigue tu clave en <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>.
+        La clave no se guarda ni se envía a ningún sitio excepto a Anthropic.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Contenido</div>
+
+    <div class="field">
+      <label for="objetivo">Objetivo del contenido</label>
+      <textarea id="objetivo" placeholder="Ejemplo: explicar qué es la fermentación de precisión a una audiencia sin conocimientos técnicos"></textarea>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="audiencia">Audiencia</label>
+        <input type="text" id="audiencia" placeholder="Ejemplo: inversores B2B, 35-50 años" />
+      </div>
+      <div class="field">
+        <label for="canal">Canal</label>
+        <select id="canal">
+          <option value="LinkedIn">LinkedIn</option>
+          <option value="Newsletter">Newsletter</option>
+          <option value="Blog">Blog</option>
+          <option value="Instagram">Instagram</option>
+          <option value="Email comercial">Email comercial</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="tono">Tono</label>
+        <select id="tono">
+          <option value="cercano y directo">Cercano y directo</option>
+          <option value="formal y técnico">Formal y técnico</option>
+          <option value="divulgativo">Divulgativo</option>
+          <option value="inspiracional">Inspiracional</option>
+          <option value="informativo y neutro">Informativo y neutro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="formato">Formato</label>
+        <select id="formato">
+          <option value="post corto (hasta 300 palabras)">Post corto</option>
+          <option value="post largo (300-800 palabras)">Post largo</option>
+          <option value="artículo (800+ palabras)">Artículo</option>
+          <option value="email (150-250 palabras)">Email</option>
+          <option value="hilo">Hilo</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="genBtn" onclick="generate()">Generar briefing</button>
+  </div>
+
+  <div class="card result" id="result">
+    <div class="result-header">Briefing generado</div>
+    <div id="resultContent"></div>
+  </div>
+
+  <script>
+    async function generate() {
+      const apikey = document.getElementById('apikey').value.trim();
+      const objetivo = document.getElementById('objetivo').value.trim();
+      const audiencia = document.getElementById('audiencia').value.trim();
+
+      if (!apikey) { alert('Introduce tu API key de Anthropic.'); return; }
+      if (!objetivo || !audiencia) { alert('Rellena el objetivo y la audiencia.'); return; }
+
+      const canal = document.getElementById('canal').value;
+      const tono = document.getElementById('tono').value;
+      const formato = document.getElementById('formato').value;
+
+      const btn = document.getElementById('genBtn');
+      const resultCard = document.getElementById('result');
+      const resultContent = document.getElementById('resultContent');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Generando...';
+      resultCard.style.display = 'none';
+
+      const prompt = `Eres un experto en content strategy. Genera un briefing de contenido estructurado y accionable.
+
+Datos:
+- Objetivo: ${objetivo}
+- Audiencia: ${audiencia}
+- Canal: ${canal}
+- Tono: ${tono}
+- Formato: ${formato}
+
+Devuelve el briefing en este formato exacto, con cada sección separada por "###":
+###ANGULO
+Una frase que describe el ángulo editorial o el hook principal.
+###MENSAJE CLAVE
+El mensaje principal que el lector debe recordar. Una o dos frases.
+###ESTRUCTURA
+Los puntos o secciones que debe tener el contenido. Lista numerada.
+###LLAMADA A LA ACCION
+Qué quieres que haga el lector al terminar. Una frase concreta.
+###PALABRAS A EVITAR
+3-5 palabras o frases que no encajan con este tono o audiencia.
+
+Sé directo y concreto. Sin relleno.`;
+
+      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apikey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 1000,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          resultContent.innerHTML = `<div class="error-box"><strong>Error:</strong> ${data.error.message}</div>`;
+          resultCard.style.display = 'block';
+          btn.disabled = false;
+          btn.innerHTML = 'Generar briefing';
+          return;
+        }
+
+        const text = data.content.map(i => i.text || '').join('');
+
+        const sections = {
+          'ANGULO': 'Ángulo editorial',
+          'MENSAJE CLAVE': 'Mensaje clave',
+          'ESTRUCTURA': 'Estructura',
+          'LLAMADA A LA ACCION': 'Llamada a la acción',
+          'PALABRAS A EVITAR': 'Palabras a evitar'
+        };
+
+        let html = '';
+        const entries = Object.entries(sections);
+        entries.forEach(([key, label], i) => {
+          const regex = new RegExp(`###${key}\\s*([\\s\\S]*?)(?=###|$)`, 'i');
+          const match = text.match(regex);
+          if (match) {
+            if (i > 0) html += '<hr class="divider">';
+            html += `<div class="block">
+              <div class="block-label">${label}</div>
+              <div class="block-content">${match[1].trim()}</div>
+            </div>`;
+          }
+        });
+
+        resultContent.innerHTML = html;
+        resultCard.style.display = 'block';
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      } catch (err) {
+        resultContent.innerHTML = `<div class="error-box"><strong>Error:</strong> ${err.message}</div>`;
+        resultCard.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = 'Generar briefing';
+    }
+  </script>
+
+</body>
+</html>
